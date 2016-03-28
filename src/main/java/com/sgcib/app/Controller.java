@@ -3,12 +3,8 @@ package com.sgcib.app;
 import javafx.fxml.FXML;
 import javafx.scene.control.TextArea;
 import sun.misc.BASE64Decoder;
-import sun.misc.BASE64Encoder;
 
 import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.DESKeySpec;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -20,47 +16,40 @@ public class Controller {
     @FXML
     private TextArea result;
 
-    private SecretKey secretKey;
+    private Crypter crypter;
 
     @FXML
     public void initialize() {
-        try  {
-            byte[] desKeyData = {(byte) 0x04, (byte) 0x01, (byte) 0x07, (byte) 0x04, (byte) 0x02, (byte) 0x08, (byte) 0x02, (byte) 0x01};
-            DESKeySpec desKeySpec = new DESKeySpec(desKeyData);
-            SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("DES");
-            secretKey = keyFactory.generateSecret(desKeySpec);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        try {
+            crypter = new Crypter();
+        } catch (Crypter.Exception e) {
+            logError(e);
         }
     }
 
     @FXML
-    public void encrypt() throws Exception {
+    public void encrypt() {
         try {
-            Cipher cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
-            byte[] text = value.getText().getBytes();
-            byte[] textEncrypted = cipher.doFinal(text);
-            this.result.setText(new BASE64Encoder().encode(textEncrypted));
-        } catch (Exception e) {
-            this.result.setText(Stream.of(e.getStackTrace()).
-                    map(st -> st.toString()).
-                    collect(Collectors.joining("\r\n")));
+            if (crypter != null) {
+                this.result.setText(crypter.encrypt(this.value.getText()));
+            } else {
+                throw new Crypter.Exception("Crypter is null");
+            }
+        } catch (Crypter.Exception e) {
+            logError(e);
         }
     }
 
     @FXML
     public void decrypt() {
         try {
-            Cipher cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
-            cipher.init(Cipher.DECRYPT_MODE, secretKey);
-            byte[] text = new BASE64Decoder().decodeBuffer(value.getText());
-            byte[] textEncrypted = cipher.doFinal(text);
-            this.result.setText(new String(textEncrypted));
+            if (crypter != null) {
+                this.result.setText(crypter.decrypt(this.value.getText()));
+            } else {
+                throw new Crypter.Exception("Crypter is null");
+            }
         } catch (Exception e) {
-            this.result.setText(Stream.of(e.getStackTrace()).
-                    map(st -> st.toString()).
-                    collect(Collectors.joining("\r\n")));
+            logError(e);
         }
     }
 
@@ -68,5 +57,11 @@ public class Controller {
     public void clear() {
         this.value.clear();
         this.result.clear();
+    }
+
+    private void logError(Exception e) {
+        this.result.setText(Stream.of(e.getStackTrace()).
+                map(st -> st.toString()).
+                collect(Collectors.joining("\r\n")));
     }
 }
